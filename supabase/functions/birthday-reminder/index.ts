@@ -38,7 +38,7 @@ const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map((
 
 // Bump this whenever this file changes. A plain GET on the function URL returns
 // it, so you can confirm which build is actually deployed instead of guessing.
-const FN_VERSION = "2026-07-27-birthday-only";
+const FN_VERSION = "2026-07-27-no-hire";
 
 const supa = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 const te = new TextEncoder();
@@ -113,28 +113,26 @@ async function copyRecipients(): Promise<string[]> {
   return fromTable.length ? fromTable : TEAM_RECIPIENTS;
 }
 
-// ── Who's celebrating on a given day ─────────────────────────────────────────
+// ── Who has a birthday on a given day ────────────────────────────────────────
 type Person = {
   id: string; full_name: string; person_email: string | null;
-  birth_date: string | null; hire_date: string | null; department: string | null;
+  birth_date: string | null; department: string | null;
 };
-const PERSON_COLS = "id, full_name, person_email, birth_date, hire_date, department";
+const PERSON_COLS = "id, full_name, person_email, birth_date, department";
 
-async function peopleOn(field: "birth" | "hire", month: number, day: number, year: number): Promise<Person[]> {
-  const mCol = field === "birth" ? "birth_month" : "hire_month";
-  const dCol = field === "birth" ? "birth_day" : "hire_day";
-  const { data, error } = await supa.from("birthdays").select(PERSON_COLS).eq("is_active", true).eq(mCol, month).eq(dCol, day);
+async function peopleBornOn(month: number, day: number, year: number): Promise<Person[]> {
+  const { data, error } = await supa.from("birthdays").select(PERSON_COLS).eq("is_active", true).eq("birth_month", month).eq("birth_day", day);
   // Surface DB errors instead of silently reporting "nobody due" (e.g. a missing
   // column because a migration hasn't been run).
-  if (error) throw new Error(`${field} lookup failed: ${error.message}. Have you run 04_greetings.sql?`);
+  if (error) throw new Error(`birthday lookup failed: ${error.message}. Have you run 01_schema.sql?`);
   let people: Person[] = data ?? [];
   // Feb-29 people are observed on the configured day in a non-leap year.
   const observeFeb29 =
     (OBSERVE_FEB29_ON === "02-28" && month === 2 && day === 28 && !isLeap(year)) ||
     (OBSERVE_FEB29_ON === "03-01" && month === 3 && day === 1 && !isLeap(year));
   if (observeFeb29) {
-    const r = await supa.from("birthdays").select(PERSON_COLS).eq("is_active", true).eq(mCol, 2).eq(dCol, 29);
-    if (r.error) throw new Error(`${field} Feb-29 lookup failed: ${r.error.message}`);
+    const r = await supa.from("birthdays").select(PERSON_COLS).eq("is_active", true).eq("birth_month", 2).eq("birth_day", 29);
+    if (r.error) throw new Error(`birthday Feb-29 lookup failed: ${r.error.message}`);
     if (r.data) people = [...people, ...r.data];
   }
   return people;
@@ -263,7 +261,7 @@ async function runGreetings(opts: { force?: boolean } = {}) {
   let birthdays = 0;
   const skipped: string[] = [];
 
-  for (const p of await peopleOn("birth", month, day, year)) {
+  for (const p of await peopleBornOn(month, day, year)) {
     if (!p.person_email) { skipped.push(`${p.full_name} (no email)`); continue; }
     if (!(await claim(p.id, year, "birthday", observed))) continue; // already greeted this year
     try { await sendGreeting(p); birthdays++; }
@@ -277,7 +275,7 @@ async function runTestSend() {
   // Preview a sample birthday greeting to the first copy-recipient (or the sender).
   const copies = await copyRecipients();
   const to = copies[0] ?? GRAPH_SENDER;
-  const sample: Person = { id: "sample", full_name: "Alex Rivera", person_email: to, birth_date: null, hire_date: null, department: null };
+  const sample: Person = { id: "sample", full_name: "Alex Rivera", person_email: to, birth_date: null, department: null };
   await sendGreeting(sample, { toOverride: to, testMode: true });
   return { sent: true, testMode: true, to };
 }
@@ -287,7 +285,6 @@ function sanitize(p: Record<string, unknown>) {
   const out: Record<string, unknown> = {};
   if (p.full_name !== undefined) out.full_name = String(p.full_name).trim();
   if (p.birth_date !== undefined) out.birth_date = p.birth_date || null;
-  if (p.hire_date !== undefined) out.hire_date = p.hire_date || null;
   if (p.person_email !== undefined) out.person_email = p.person_email ? String(p.person_email).trim().toLowerCase() : null;
   if (p.department !== undefined) out.department = p.department || null;
   if (p.is_active !== undefined) out.is_active = !!p.is_active;
@@ -415,7 +412,7 @@ async function handleStatus() {
   const observed = `${t.y}-${pad(t.m)}-${pad(t.d)}`;
 
   // Same rule the sender uses, so the count always matches reality.
-  const bdays = (await peopleOn("birth", t.m, t.d, t.y)).filter((p) => p.person_email);
+  const bdays = (await peopleBornOn(t.m, t.d, t.y)).filter((p) => p.person_email);
 
   type SentRow = { sent_at: string };
   const { data: todayRows } = await supa.from("reminder_log").select("sent_at").eq("observed_date", observed);
