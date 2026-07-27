@@ -100,7 +100,7 @@ export default function App() {
       <header className="mb-5 flex items-center gap-3">
         <img src={`${import.meta.env.BASE_URL}arete-logo.png`} alt="Arete Care" className="h-10 w-10 rounded-lg object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
         <div className="flex-1">
-          <h1 className="text-xl font-extrabold leading-tight text-ink">Birthdays &amp; Anniversaries</h1>
+          <h1 className="text-xl font-extrabold leading-tight text-ink">Birthdays</h1>
           <p className="text-sm text-muted">
             A warm greeting to each person on their birthday.
           </p>
