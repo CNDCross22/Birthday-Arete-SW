@@ -1,13 +1,12 @@
 import readXlsxFile from 'read-excel-file/browser'
 
 // Parse a CSV or Excel file of people. Columns (headers auto-detected):
-//   Full Name, Email, Birthday, Date Hired
-// Email + at least one date are required for a row to be greetable.
+//   Full Name, Email, Birthday
+// Email + a birthday are required for a row to be greetable.
 
 const NAME_KEYS = ['full name', 'name', 'employee', 'staff', 'person']
 const EMAIL_KEYS = ['email', 'e-mail', 'mail']
 const BIRTH_KEYS = ['birth', 'dob', 'bday']
-const HIRE_KEYS = ['hire', 'hired', 'start date', 'started', 'joined', 'anniversary', 'employment']
 
 const pad = (n) => String(n).padStart(2, '0')
 const norm = (h) => String(h ?? '').trim().toLowerCase()
@@ -61,7 +60,7 @@ function parseCSV(text) {
   return text.replace(/\r\n?/g, '\n').split('\n').filter((l) => l.trim().length).map(splitCSVLine)
 }
 
-// → { valid: [{full_name, person_email, birth_date, hire_date}], invalid: [{full_name, reason}] }
+// → { valid: [{full_name, person_email, birth_date}], invalid: [{full_name, reason}] }
 export async function parseBirthdayFile(file) {
   const lower = file.name.toLowerCase()
   let rows
@@ -73,12 +72,11 @@ export async function parseBirthdayFile(file) {
   let nameIdx = findCol(header, NAME_KEYS)
   let emailIdx = findCol(header, EMAIL_KEYS)
   let birthIdx = findCol(header, BIRTH_KEYS)
-  let hireIdx = findCol(header, HIRE_KEYS)
   let dataRows = rows.slice(1)
 
-  // No recognizable header at all → assume positional: name, email, birthday, hired.
-  if (nameIdx === -1 && emailIdx === -1 && birthIdx === -1 && hireIdx === -1) {
-    nameIdx = 0; emailIdx = 1; birthIdx = 2; hireIdx = 3
+  // No recognizable header at all → assume positional: name, email, birthday.
+  if (nameIdx === -1 && emailIdx === -1 && birthIdx === -1) {
+    nameIdx = 0; emailIdx = 1; birthIdx = 2
     dataRows = rows
   }
 
@@ -87,23 +85,22 @@ export async function parseBirthdayFile(file) {
     const full_name = String(r[nameIdx] ?? '').trim()
     const person_email = emailIdx >= 0 ? String(r[emailIdx] ?? '').trim().toLowerCase() : ''
     const birth_date = birthIdx >= 0 ? toISODate(r[birthIdx]) : null
-    const hire_date = hireIdx >= 0 ? toISODate(r[hireIdx]) : null
 
-    if (!full_name && !person_email && !birth_date && !hire_date) continue // blank line
+    if (!full_name && !person_email && !birth_date) continue // blank line
     let reason = ''
     if (!full_name) reason = 'no name'
     else if (!person_email || !/.+@.+\..+/.test(person_email)) reason = 'missing/invalid email'
-    else if (!birth_date && !hire_date) reason = 'no birthday or hire date'
+    else if (!birth_date) reason = 'no birthday'
     if (reason) { invalid.push({ full_name: full_name || '(no name)', reason }); continue }
-    valid.push({ full_name, person_email, birth_date, hire_date })
+    valid.push({ full_name, person_email, birth_date })
   }
   return { valid, invalid }
 }
 
 export const TEMPLATE_CSV =
-  'Full Name,Email,Birthday,Date Hired\n' +
-  'Maria Santos,maria@aretecare.com.au,1992-03-21,2020-06-15\n' +
-  'Ben Cruz,ben@aretecare.com.au,05/11/1988,12/01/2019\n'
+  'Full Name,Email,Birthday\n' +
+  'Maria Santos,maria@aretecare.com.au,1992-03-21\n' +
+  'Ben Cruz,ben@aretecare.com.au,05/11/1988\n'
 
 export function downloadTemplate() {
   const blob = new Blob([TEMPLATE_CSV], { type: 'text/csv' })

@@ -48,7 +48,7 @@ export default function SettingsModal({ accessCode, onClose }) {
     try {
       const r = await runGreetingsNow(accessCode)
       if (r.sent) {
-        setResult(`✅ Sent — ${r.birthdays} birthday, ${r.anniversaries} anniversary.`)
+        setResult(`✅ Sent — ${r.birthdays} birthday greeting${r.birthdays === 1 ? '' : 's'}.`)
         toast('Greetings sent.')
       } else {
         const extra = r.skipped?.length ? ` · skipped: ${r.skipped.join(', ')}` : ''
@@ -134,7 +134,7 @@ export default function SettingsModal({ accessCode, onClose }) {
                 </button>
               </div>
               <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
-                <strong>Run now</strong> greets anyone whose birthday or work anniversary is today.
+                <strong>Run now</strong> greets anyone whose birthday is today.
                 Each person is greeted only once per year — use <strong>Reset history</strong> to allow a repeat while testing.
               </p>
             </div>

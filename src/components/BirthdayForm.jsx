@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
 
-const empty = { full_name: '', person_email: '', birth_date: '', hire_date: '', department: '', is_active: true }
+const empty = { full_name: '', person_email: '', birth_date: '', department: '', is_active: true }
 
 // Add / edit a person. `initial` (a row) switches it into edit mode.
 export default function BirthdayForm({ initial, onClose, onSave }) {
@@ -22,8 +22,8 @@ export default function BirthdayForm({ initial, onClose, onSave }) {
       setError('Name and email are required.')
       return
     }
-    if (!form.birth_date && !form.hire_date) {
-      setError('Add a birthday, a date hired, or both.')
+    if (!form.birth_date) {
+      setError('A birthday is required.')
       return
     }
     setSaving(true)
@@ -33,7 +33,6 @@ export default function BirthdayForm({ initial, onClose, onSave }) {
         full_name: form.full_name.trim(),
         person_email: form.person_email.trim(),
         birth_date: form.birth_date || null,
-        hire_date: form.hire_date || null,
         department: form.department.trim() || null,
         is_active: form.is_active,
       }
@@ -66,14 +65,9 @@ export default function BirthdayForm({ initial, onClose, onSave }) {
             <input type="email" value={form.person_email} onChange={set('person_email')} placeholder="maria@aretecare.com.au" className={inputCls} />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Birthday" hint="For the 🎂 greeting.">
-              <input type="date" value={form.birth_date} onChange={set('birth_date')} className={inputCls} />
-            </Field>
-            <Field label="Date hired" hint="For the 🎉 anniversary.">
-              <input type="date" value={form.hire_date} onChange={set('hire_date')} className={inputCls} />
-            </Field>
-          </div>
+          <Field label="Birthday *" hint="The 🎂 greeting is sent on this day.">
+            <input type="date" value={form.birth_date} onChange={set('birth_date')} className={inputCls} />
+          </Field>
 
           <Field label="Department" hint="Optional.">
             <input value={form.department} onChange={set('department')} placeholder="e.g. Care team" className={inputCls} />

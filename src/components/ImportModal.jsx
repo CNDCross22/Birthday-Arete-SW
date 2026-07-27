@@ -50,7 +50,7 @@ export default function ImportModal({ onClose, onImport }) {
         </div>
 
         <p className="mb-3 text-sm text-muted">
-          Upload a <strong>.csv</strong> or <strong>.xlsx</strong> with columns: <strong>Name, Email, Birthday, Date Hired</strong> (email + at least one date needed).
+          Upload a <strong>.csv</strong> or <strong>.xlsx</strong> with columns: <strong>Name, Email, Birthday</strong> (all three needed).
           <button onClick={downloadTemplate} className="ml-1 inline-flex items-center gap-1 font-semibold text-brand-600 hover:underline">
             <Download size={13} /> get template
           </button>
@@ -79,7 +79,7 @@ export default function ImportModal({ onClose, onImport }) {
                   <div key={i} className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-1.5 last:border-0">
                     <span className="min-w-0 truncate text-ink">{r.full_name} <span className="text-slate-400">· {r.person_email}</span></span>
                     <span className="shrink-0 text-xs text-muted">
-                      {r.birth_date ? `🎂 ${formatDayMonth(r.birth_date)}` : ''}{r.birth_date && r.hire_date ? '  ' : ''}{r.hire_date ? `🎉 ${formatDayMonth(r.hire_date)}` : ''}
+                      {r.birth_date ? `🎂 ${formatDayMonth(r.birth_date)}` : ''}
                     </span>
                   </div>
                 ))}

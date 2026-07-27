@@ -102,7 +102,7 @@ export default function App() {
         <div className="flex-1">
           <h1 className="text-xl font-extrabold leading-tight text-ink">Birthdays &amp; Anniversaries</h1>
           <p className="text-sm text-muted">
-            A warm greeting to each person on their birthday and work anniversary.
+            A warm greeting to each person on their birthday.
           </p>
         </div>
         {!isDemo && (

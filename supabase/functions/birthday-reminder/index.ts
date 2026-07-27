@@ -1,9 +1,7 @@
 // ============================================================================
 // Arete Care — Greetings :: Edge Function (Deno)
 //
-// Sends a personal greeting TO each employee, ON the day:
-//   • 🎂 Happy Birthday        — on their birthday
-//   • 🎉 Work Anniversary       — on their date-hired anniversary (with years of service)
+// Sends a personal 🎂 Happy Birthday greeting TO each employee, ON their birthday.
 // Optionally BCCs a "copies" list (e.g. HR) on every greeting.
 //
 // Jobs:
@@ -40,7 +38,7 @@ const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map((
 
 // Bump this whenever this file changes. A plain GET on the function URL returns
 // it, so you can confirm which build is actually deployed instead of guessing.
-const FN_VERSION = "2026-07-21-status";
+const FN_VERSION = "2026-07-27-birthday-only";
 
 const supa = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 const te = new TextEncoder();
@@ -50,12 +48,6 @@ const pad = (n: number) => String(n).padStart(2, "0");
 const isLeap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
 const dupKey = (name: string, date: string) => `${name.trim().toLowerCase()}|${date}`;
 const firstNameOf = (full: string) => full.trim().split(/\s+/)[0] || "there";
-// Kept for if HR ever wants the year count back in the anniversary copy
-// (e.g. "your 5th anniversary"). Their current wording says "another milestone".
-function ordinal(n: number): string {
-  const s = ["th", "st", "nd", "rd"], v = n % 100;
-  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
-}
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -167,7 +159,7 @@ async function graphToken(): Promise<string> {
 }
 
 async function sendGreeting(
-  p: Person, kind: "birthday" | "anniversary", year: number,
+  p: Person,
   opts: { toOverride?: string; testMode?: boolean } = {},
 ) {
   if (!GRAPH_TENANT_ID || !GRAPH_CLIENT_ID || !GRAPH_CLIENT_SECRET) {
@@ -178,43 +170,23 @@ async function sendGreeting(
   if (!to) throw new Error("no recipient email");
   const name = firstNameOf(p.full_name);
 
-  // ── HR-APPROVED COPY ───────────────────────────────────────────────────────
+  // ── HR-APPROVED COPY (birthday) ─────────────────────────────────────────────
   // This wording comes from HR. Please keep it in sync with them before editing.
-  let subject: string, heading: string, accent: string;
-  let opening: string, openingBold: boolean, paras: string[], closing: string, closingBold: boolean;
-  if (kind === "birthday") {
-    accent = "#7a5c8e";
-    subject = `Happy Birthday, ${name}`;
-    heading = "🎂 Happy Birthday 🎂";
-    opening = `Happy Birthday, ${name}! 🎉`;
-    openingBold = true;
-    paras = [
-      `Wishing you a wonderful birthday filled with happiness, good health, and special moments with your loved ones.`,
-      `Thank you for your dedication, compassion, and hard work at Arete Care. We truly value your commitment to making a positive difference in the lives of the people we support. Your contributions are greatly appreciated, and we are grateful to have you as part of our team.`,
-      `Have a fantastic birthday and a wonderful year ahead!`,
-    ];
-    closing = `From your Arete Care Family.`;
-    closingBold = false;
-  } else {
-    accent = "#3a9ca3";
-    subject = `Congratulations on Your Work Anniversary, ${name}`;
-    heading = "🎉 Happy Work Anniversary 🎉";
-    opening = `Dear ${name},`;
-    openingBold = false;
-    paras = [
-      `Congratulations on reaching another milestone with Arete Care!`,
-      `Thank you for your dedication, hard work, and commitment to making a positive difference in the lives of the people we support. Your compassion, professionalism, and contributions are truly valued, and we appreciate everything you do as part of our team.`,
-      `We are grateful to have you with us and look forward to celebrating many more milestones together. Wishing you continued success and fulfillment in the years ahead!`,
-    ];
-    closing = `Thank you for being a valued member of the Arete Care family! 💙`;
-    closingBold = true;
-  }
+  const accent = "#7a5c8e";
+  const subject = `Happy Birthday, ${name}`;
+  const heading = "🎂 Happy Birthday 🎂";
+  const opening = `Happy Birthday, ${name}! 🎉`;
+  const paras = [
+    `Wishing you a wonderful birthday filled with happiness, good health, and special moments with your loved ones.`,
+    `Thank you for your dedication, compassion, and hard work at Arete Care. We truly value your commitment to making a positive difference in the lives of the people we support. Your contributions are greatly appreciated, and we are grateful to have you as part of our team.`,
+    `Have a fantastic birthday and a wonderful year ahead!`,
+  ];
+  const closing = `From your Arete Care Family.`;
 
-  const wrap = (t: string, bold: boolean) => (bold ? `<strong>${esc(t)}</strong>` : esc(t));
   const bodyParas = [
-    `<p style="margin:0 0 16px;font-size:16px;line-height:1.7">${wrap(opening, openingBold)}</p>`,
+    `<p style="margin:0 0 16px;font-size:16px;line-height:1.7"><strong>${esc(opening)}</strong></p>`,
     ...paras.map((t) => `<p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#2c2740">${esc(t)}</p>`),
-    `<p style="margin:22px 0 0;font-size:15px;line-height:1.7">${wrap(closing, closingBold)}</p>`,
+    `<p style="margin:22px 0 0;font-size:15px;line-height:1.7">${esc(closing)}</p>`,
   ].join("");
 
   const html = `
@@ -288,25 +260,17 @@ async function runGreetings(opts: { force?: boolean } = {}) {
 
   const observed = `${year}-${pad(month)}-${pad(day)}`;
 
-  let birthdays = 0, anniversaries = 0;
+  let birthdays = 0;
   const skipped: string[] = [];
 
   for (const p of await peopleOn("birth", month, day, year)) {
     if (!p.person_email) { skipped.push(`${p.full_name} (no email)`); continue; }
     if (!(await claim(p.id, year, "birthday", observed))) continue; // already greeted this year
-    try { await sendGreeting(p, "birthday", year); birthdays++; }
+    try { await sendGreeting(p); birthdays++; }
     catch (e) { await unclaim(p.id, year, "birthday"); throw e; }
   }
-  for (const p of await peopleOn("hire", month, day, year)) {
-    const years = p.hire_date ? year - Number(p.hire_date.slice(0, 4)) : 0;
-    if (years < 1) continue; // hired this year → not an anniversary yet
-    if (!p.person_email) { skipped.push(`${p.full_name} (no email)`); continue; }
-    if (!(await claim(p.id, year, "anniversary", observed))) continue;
-    try { await sendGreeting(p, "anniversary", year); anniversaries++; }
-    catch (e) { await unclaim(p.id, year, "anniversary"); throw e; }
-  }
 
-  return { sent: birthdays + anniversaries > 0, birthdays, anniversaries, skipped, date: `${pad(month)}-${pad(day)}` };
+  return { sent: birthdays > 0, birthdays, skipped, date: `${pad(month)}-${pad(day)}` };
 }
 
 async function runTestSend() {
@@ -314,7 +278,7 @@ async function runTestSend() {
   const copies = await copyRecipients();
   const to = copies[0] ?? GRAPH_SENDER;
   const sample: Person = { id: "sample", full_name: "Alex Rivera", person_email: to, birth_date: null, hire_date: null, department: null };
-  await sendGreeting(sample, "birthday", localNow(LOCAL_TZ).y, { toOverride: to, testMode: true });
+  await sendGreeting(sample, { toOverride: to, testMode: true });
   return { sent: true, testMode: true, to };
 }
 
@@ -340,7 +304,7 @@ async function handleWrite(op: string, payload: Record<string, unknown>) {
   if (op === "create") {
     const row = sanitize(payload);
     if (!row.full_name) throw new Error("full_name is required");
-    if (!row.birth_date && !row.hire_date) throw new Error("a birthday or a hire date is required");
+    if (!row.birth_date) throw new Error("a birthday is required");
     const { data, error } = await supa.from("birthdays").insert(row).select().single();
     if (error) throw friendlyDbError(error);
     return data;
@@ -361,7 +325,7 @@ async function handleWrite(op: string, payload: Record<string, unknown>) {
   }
   if (op === "createMany") {
     const rawRows = Array.isArray(payload.rows) ? (payload.rows as Record<string, unknown>[]) : [];
-    const clean = rawRows.map(sanitize).filter((r) => r.full_name && (r.birth_date || r.hire_date)) as Record<string, unknown>[];
+    const clean = rawRows.map(sanitize).filter((r) => r.full_name && r.birth_date) as Record<string, unknown>[];
     if (!clean.length) return { imported: 0, skipped: 0, total: rawRows.length };
     // Dedup vs existing: by email when present, else by name + birthday.
     const { data: existing } = await supa.from("birthdays").select("full_name, birth_date, person_email");
@@ -450,12 +414,8 @@ async function handleStatus() {
   const send = await getSendTime();
   const observed = `${t.y}-${pad(t.m)}-${pad(t.d)}`;
 
-  // Same rules the sender uses, so the count always matches reality.
+  // Same rule the sender uses, so the count always matches reality.
   const bdays = (await peopleOn("birth", t.m, t.d, t.y)).filter((p) => p.person_email);
-  const annis = (await peopleOn("hire", t.m, t.d, t.y)).filter((p) => {
-    const yrs = p.hire_date ? t.y - Number(p.hire_date.slice(0, 4)) : 0;
-    return p.person_email && yrs >= 1;
-  });
 
   type SentRow = { sent_at: string };
   const { data: todayRows } = await supa.from("reminder_log").select("sent_at").eq("observed_date", observed);
@@ -465,7 +425,7 @@ async function handleStatus() {
   const lastOverall = ((lastRows ?? []) as SentRow[])[0]?.sent_at ?? null;
 
   return {
-    due_today: bdays.length + annis.length,
+    due_today: bdays.length,
     sent_today: sentTimes.length,
     last_sent_at: sentTimes.length ? sentTimes[sentTimes.length - 1] : lastOverall,
     send_time: `${pad(send.hour)}:${pad(send.minute)}`,

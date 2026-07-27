@@ -51,19 +51,8 @@ export function countdownLabel(days) {
   return `in ${days} days`
 }
 
-// Completed years of service as of the next hire-date anniversary.
-export function yearsSince(iso, from = new Date()) {
-  const { y } = parseISO(iso)
-  if (!y || y <= 1900) return null
-  return nextOccurrence(iso, from).getFullYear() - y
-}
-
-// The soonest upcoming celebration for a person (birthday or work anniversary).
+// The upcoming birthday for a person, or null if none is recorded.
 export function nextEvent(person, from = new Date()) {
-  const events = []
-  if (person.birth_date) events.push({ kind: 'birthday', date: person.birth_date, days: daysUntilNextBirthday(person.birth_date, from) })
-  if (person.hire_date) events.push({ kind: 'anniversary', date: person.hire_date, days: daysUntilNextBirthday(person.hire_date, from) })
-  if (!events.length) return null
-  events.sort((a, b) => a.days - b.days)
-  return events[0]
+  if (!person.birth_date) return null
+  return { kind: 'birthday', date: person.birth_date, days: daysUntilNextBirthday(person.birth_date, from) }
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
-import { parseISO, yearsSince } from '../lib/dates'
+import { parseISO } from '../lib/dates'
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const WEEKDAYS_MIN = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -27,16 +27,9 @@ export default function CalendarView({ rows }) {
     const byDay = {}
     const add = (day, ev) => { (byDay[day] = byDay[day] || []).push(ev) }
     for (const r of rows) {
-      if (!r.is_active) continue
-      if (r.birth_date) {
-        const d = parseISO(r.birth_date)
-        if (d.m === m) add(d.d, { kind: 'birthday', person: r })
-      }
-      if (r.hire_date) {
-        const d = parseISO(r.hire_date)
-        const yrs = yearsSince(r.hire_date)
-        if (d.m === m && (yrs == null || yrs >= 1)) add(d.d, { kind: 'anniversary', person: r, years: yrs })
-      }
+      if (!r.is_active || !r.birth_date) continue
+      const d = parseISO(r.birth_date)
+      if (d.m === m) add(d.d, { person: r })
     }
 
     const cells = []
@@ -72,7 +65,7 @@ export default function CalendarView({ rows }) {
         <div className="min-w-0 text-center">
           <div className="truncate text-base font-bold text-ink">{MONTHS[cursor.m - 1]} {cursor.y}</div>
           <div className="text-xs text-muted">
-            {agenda.length} celebration{agenda.length === 1 ? '' : 's'}
+            {agenda.length} birthday{agenda.length === 1 ? '' : 's'}
           </div>
         </div>
         <button onClick={() => move(1)} className="shrink-0 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-ink" title="Next month">
@@ -114,12 +107,7 @@ export default function CalendarView({ rows }) {
                   isToday(d) ? 'text-accent-700' : has ? 'text-brand-700' : 'text-slate-400'
                 }`}>{d}</span>
                 {/* phones: compact markers only (names live in the agenda below) */}
-                {has && (
-                  <span className="text-[9px] leading-none sm:hidden">
-                    {evs.some((e) => e.kind === 'birthday') && '🎂'}
-                    {evs.some((e) => e.kind === 'anniversary') && '🎉'}
-                  </span>
-                )}
+                {has && <span className="text-[9px] leading-none sm:hidden">🎂</span>}
               </div>
 
               {/* desktop: Outlook-style name chips */}
@@ -130,12 +118,12 @@ export default function CalendarView({ rows }) {
                   {evs.slice(0, VIS_LG).map((ev, k) => (
                     <span
                       key={k}
-                      title={`${ev.person.full_name} — ${ev.kind === 'birthday' ? 'birthday' : `${ev.years} years`}`}
-                      className={`items-center gap-1 truncate rounded px-1 py-0.5 text-[11px] leading-tight lg:text-xs ${
+                      title={`${ev.person.full_name} — birthday`}
+                      className={`items-center gap-1 truncate rounded bg-accent-100 px-1 py-0.5 text-[11px] leading-tight text-accent-800 lg:text-xs ${
                         k < VIS_SM ? 'flex' : 'hidden lg:flex'
-                      } ${ev.kind === 'birthday' ? 'bg-accent-100 text-accent-800' : 'bg-brand-100 text-brand-800'}`}
+                      }`}
                     >
-                      <span className="shrink-0">{ev.kind === 'birthday' ? '🎂' : '🎉'}</span>
+                      <span className="shrink-0">🎂</span>
                       <span className="truncate">{ev.person.full_name}</span>
                     </span>
                   ))}
@@ -159,10 +147,10 @@ export default function CalendarView({ rows }) {
       {/* Agenda — always visible, so names are readable on every screen size */}
       <div className="mt-4 border-t border-slate-100 pt-3">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-          {MONTHS[cursor.m - 1]} celebrations
+          {MONTHS[cursor.m - 1]} birthdays
         </p>
         {agenda.length === 0 ? (
-          <p className="py-2 text-sm text-muted">Nothing in {MONTHS[cursor.m - 1]}.</p>
+          <p className="py-2 text-sm text-muted">No birthdays in {MONTHS[cursor.m - 1]}.</p>
         ) : (
           <ul className="space-y-1">
             {agenda.map((ev, i) => (
@@ -175,11 +163,8 @@ export default function CalendarView({ rows }) {
                 <span className="w-14 shrink-0 text-xs font-semibold text-muted">
                   {weekdayOf(ev.day)} {ev.day}
                 </span>
-                <span className="shrink-0">{ev.kind === 'birthday' ? '🎂' : '🎉'}</span>
+                <span className="shrink-0">🎂</span>
                 <span className="min-w-0 flex-1 truncate font-medium text-ink">{ev.person.full_name}</span>
-                <span className="shrink-0 text-xs text-muted">
-                  {ev.kind === 'birthday' ? 'birthday' : `${ev.years} yr${ev.years === 1 ? '' : 's'}`}
-                </span>
               </li>
             ))}
           </ul>
@@ -196,7 +181,7 @@ export default function CalendarView({ rows }) {
                   {weekdayOf(openDay)} {openDay} {MONTHS[cursor.m - 1]}
                 </h3>
                 <p className="text-xs text-muted">
-                  {(byDay[openDay] || []).length} celebration{(byDay[openDay] || []).length === 1 ? '' : 's'}
+                  {(byDay[openDay] || []).length} birthday{(byDay[openDay] || []).length === 1 ? '' : 's'}
                 </p>
               </div>
               <button onClick={() => setOpenDay(null)} className="text-slate-400 hover:text-slate-600" title="Close">
@@ -206,11 +191,8 @@ export default function CalendarView({ rows }) {
             <ul className="space-y-1">
               {(byDay[openDay] || []).map((ev, i) => (
                 <li key={i} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-slate-50">
-                  <span className="shrink-0">{ev.kind === 'birthday' ? '🎂' : '🎉'}</span>
+                  <span className="shrink-0">🎂</span>
                   <span className="min-w-0 flex-1 truncate font-medium text-ink">{ev.person.full_name}</span>
-                  <span className="shrink-0 text-xs text-muted">
-                    {ev.kind === 'birthday' ? 'birthday' : `${ev.years} yr${ev.years === 1 ? '' : 's'}`}
-                  </span>
                 </li>
               ))}
             </ul>
@@ -220,7 +202,6 @@ export default function CalendarView({ rows }) {
 
       <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted">
         <span>🎂 Birthday</span>
-        <span>🎉 Work anniversary</span>
         <span className="inline-flex items-center gap-1">
           <span className="inline-block h-2.5 w-2.5 rounded ring-2 ring-accent-400" /> Today
         </span>

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Pencil, Trash2, PartyPopper } from 'lucide-react'
-import { formatDayMonth, countdownLabel, yearsSince, nextEvent, nextOccurrence } from '../lib/dates'
+import { formatDayMonth, countdownLabel, nextEvent, nextOccurrence } from '../lib/dates'
 
 // Grid of compact person cards, grouped under month headings so a long list
 // stays scannable. Sorted by soonest celebration; reads left-to-right, then down.
@@ -40,7 +40,6 @@ export default function BirthdayList({ rows, onEdit, onDelete }) {
             {g.items.map((r) => {
               const today = r.is_active && r.ev.days === 0
               const soon = r.is_active && r.ev.days <= 7
-              const years = r.hire_date ? yearsSince(r.hire_date) : null
               return (
                 <li
                   key={r.id}
@@ -51,7 +50,7 @@ export default function BirthdayList({ rows, onEdit, onDelete }) {
                   <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-base ${
                     today ? 'bg-accent-500' : soon ? 'bg-brand-500' : 'bg-slate-100'
                   }`}>
-                    {r.ev.kind === 'birthday' ? '🎂' : '🎉'}
+                    🎂
                   </span>
 
                   <div className="min-w-0 flex-1 leading-tight">
@@ -61,10 +60,6 @@ export default function BirthdayList({ rows, onEdit, onDelete }) {
                     </p>
                     <p className="truncate text-xs text-muted">
                       {r.birth_date && <span>🎂 {formatDayMonth(r.birth_date)}</span>}
-                      {r.birth_date && r.hire_date && <span className="text-slate-300"> · </span>}
-                      {r.hire_date && (
-                        <span>🎉 {formatDayMonth(r.hire_date)}{years != null ? ` · ${years}y` : ''}</span>
-                      )}
                     </p>
                   </div>
 
