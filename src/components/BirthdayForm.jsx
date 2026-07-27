@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { X, Loader2 } from 'lucide-react'
 
-const empty = { full_name: '', person_email: '', birth_date: '', department: '', is_active: true }
+// Most staff are Support Workers, so prefill it — still fully editable per person.
+const empty = { full_name: '', person_email: '', birth_date: '', department: 'Support Worker', is_active: true }
 
 // Add / edit a person. `initial` (a row) switches it into edit mode.
 export default function BirthdayForm({ initial, onClose, onSave }) {
