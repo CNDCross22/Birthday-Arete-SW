@@ -4,14 +4,16 @@ import { X, Loader2 } from 'lucide-react'
 // Most staff are Support Workers, so prefill it — still fully editable per person.
 const empty = { full_name: '', person_email: '', birth_date: '', department: 'Support Worker', is_active: true }
 
-// department, person_email and notes are nullable in the DB, so a saved row can
-// hand us nulls. A null in state makes the input uncontrolled (it keeps showing
-// the stale prefill) and then blows up on .trim() at submit — so coerce to ''.
+// department and person_email are nullable in the DB, so a saved row can hand us
+// nulls. A null in state makes the input uncontrolled (it keeps showing the stale
+// prefill) and then blows up on .trim() at submit — so coerce everything to a
+// string. Departments left blank fall back to the same prefill new people get,
+// so editing an older row fills it in rather than leaving it empty.
 const toForm = (row) => ({
   full_name: row.full_name ?? '',
   person_email: row.person_email ?? '',
   birth_date: row.birth_date ?? '',
-  department: row.department ?? '',
+  department: row.department || empty.department,
   is_active: row.is_active ?? true,
 })
 
