@@ -4,6 +4,17 @@ import { X, Loader2 } from 'lucide-react'
 // Most staff are Support Workers, so prefill it — still fully editable per person.
 const empty = { full_name: '', person_email: '', birth_date: '', department: 'Support Worker', is_active: true }
 
+// department, person_email and notes are nullable in the DB, so a saved row can
+// hand us nulls. A null in state makes the input uncontrolled (it keeps showing
+// the stale prefill) and then blows up on .trim() at submit — so coerce to ''.
+const toForm = (row) => ({
+  full_name: row.full_name ?? '',
+  person_email: row.person_email ?? '',
+  birth_date: row.birth_date ?? '',
+  department: row.department ?? '',
+  is_active: row.is_active ?? true,
+})
+
 // Add / edit a person. `initial` (a row) switches it into edit mode.
 export default function BirthdayForm({ initial, onClose, onSave }) {
   const [form, setForm] = useState(empty)
@@ -12,7 +23,7 @@ export default function BirthdayForm({ initial, onClose, onSave }) {
   const editing = Boolean(initial?.id)
 
   useEffect(() => {
-    setForm(initial ? { ...empty, ...initial } : empty)
+    setForm(initial ? toForm(initial) : empty)
   }, [initial])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
